@@ -22,11 +22,11 @@ export const EPUBParser = {
         }
         return text.trim().split(/\s+/).filter(w => w.length > 0).length;
     },
-    segmentText(allText, splitAtCommas = false) {
+    segmentText(allText, splitAtCommas = false, baseTime = 0) {
         const subs = [];
         const segmenter = new Intl.Segmenter('ja', { granularity: 'sentence' });
         const segments = segmenter.segment(allText);
-        let time = 0;
+        let time = baseTime;
         for (const { segment } of segments) {
             const text = segment.trim();
             if (text.length <= 1) continue;
@@ -129,8 +129,12 @@ export const EPUBParser = {
             }
             console.log("EPUBParser: Found", spineIds.length, "spine items");
 
-            // 5. Extract Content
+            // 5. Extract Content & 6. Segment into sentences & phrases
+            let allSubs = [];
+            let currentTime = 0;
             let allText = "";
+            let chapters = [];
+            
             for (const idref of spineIds) {
                 const item = manifest[idref];
                 if (item) {
@@ -143,7 +147,16 @@ export const EPUBParser = {
                         let text = (doc.body ? doc.body.textContent : doc.documentElement.textContent)
                             .replace(/\s+/g, ' ')
                             .trim();
-                        if (text) allText += text + " ";
+                        if (text) {
+                            const titleNode = doc.querySelector("title") || doc.querySelector("h1, h2, h3");
+                            const chapterTitle = titleNode && titleNode.textContent.trim() ? titleNode.textContent.trim() : idref;
+                            chapters.push({ id: idref, title: chapterTitle, subtitleIndex: allSubs.length });
+
+                            allText += text + " ";
+                            const { subs, duration } = this.segmentText(text, splitAtCommas, currentTime);
+                            allSubs.push(...subs);
+                            currentTime = duration;
+                        }
                     }
                 }
             }
@@ -156,17 +169,25 @@ export const EPUBParser = {
                     const doc = parser.parseFromString(fflate.strFromU8(zip[key]), "text/html");
                     doc.querySelectorAll("rt, script, style").forEach(node => node.remove());
                     const text = (doc.body ? doc.body.textContent : doc.documentElement.textContent).trim();
-                    if (text) allText += text + " ";
+                    if (text) {
+                        const titleNode = doc.querySelector("title") || doc.querySelector("h1, h2, h3");
+                        const chapterTitle = titleNode && titleNode.textContent.trim() ? titleNode.textContent.trim() : key;
+                        chapters.push({ id: key, title: chapterTitle, subtitleIndex: allSubs.length });
+
+                        allText += text + " ";
+                        const { subs, duration } = this.segmentText(text, splitAtCommas, currentTime);
+                        allSubs.push(...subs);
+                        currentTime = duration;
+                    }
                 }
             }
 
             if (!allText.trim()) throw new Error("No text content found in any files inside the EPUB.");
             console.log("EPUBParser: Extracted text length:", allText.length);
 
-            // 6. Segment into sentences & phrases
-            const { subs, duration } = this.segmentText(allText, splitAtCommas);
-            meta.subs = subs;
-            meta.duration = duration;
+            meta.subs = allSubs;
+            meta.duration = currentTime;
+            meta.chapters = chapters;
             
             // 7. Count Words
             meta.totalWords = this.countWords(allText);

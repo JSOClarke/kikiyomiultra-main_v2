@@ -37,9 +37,11 @@ interface StoreState {
   isHelpOpen: boolean;
   isAllBooksOpen: boolean;
   isMangaSettingsOpen: boolean;
+  isChaptersOpen: boolean;
   
   openModal: (modalName: string) => void;
   closeModal: (modalName: string) => void;
+  toggleChapters: () => void;
 
   // Anki Integration Config
   ankiField: string;
@@ -122,9 +124,11 @@ export const useStore = create<StoreState>()(
       isHelpOpen: false,
       isAllBooksOpen: false,
       isMangaSettingsOpen: false,
+      isChaptersOpen: false,
       
       openModal: (modalName) => set({ [modalName as keyof StoreState]: true }),
       closeModal: (modalName) => set({ [modalName as keyof StoreState]: false }),
+      toggleChapters: () => set((state) => ({ isChaptersOpen: !state.isChaptersOpen })),
 
       // Anki Config defaults
       ankiField: 'SentenceAudio',

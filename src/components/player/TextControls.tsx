@@ -12,6 +12,7 @@ export const TextControls: React.FC = () => {
   const toggleCommaSplit = usePlayerStore((state) => state.toggleCommaSplit);
   const showAnnotations = useStore((state) => state.showAnnotations);
   const toggleAnnotations = useStore((state) => state.toggleAnnotations);
+  const toggleChapters = useStore((state) => state.toggleChapters);
 
   // Fallback if no book or no subtitles
   if (!activeBook || !activeBook.subtitles || activeBook.subtitles.length === 0) return null;
@@ -55,6 +56,7 @@ export const TextControls: React.FC = () => {
         {/* Left Actions */}
         <div className="flex items-center gap-4">
           <button 
+            onClick={toggleChapters}
             className="p-2 text-text-muted hover:text-text hover:bg-white/10 rounded-full transition-all"
             title="Chapters / Index"
           >

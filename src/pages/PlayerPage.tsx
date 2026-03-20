@@ -18,7 +18,7 @@ export const PlayerPage: React.FC = () => {
   const [isLoading, setIsLoading] = React.useState(true);
 
   const isFocusMode = useStore((state) => state.isFocusMode);
-  const isChaptersOpen = false; // Mock state
+  const isChaptersOpen = useStore((state) => state.isChaptersOpen);
   
   const audioRef = useRef<HTMLAudioElement>(null);
   const activeBook = usePlayerStore(state => state.activeBook);

@@ -57,9 +57,9 @@ async function extractAudioCover(file: File): Promise<Blob | undefined> {
 }
 
 // --- Segmenter Fallback for Worker ---
-function segmentText(allText: string, breakByCommas: boolean = false): { subs: Subtitle[], duration: number } {
+function segmentText(allText: string, breakByCommas: boolean = false, baseTime: number = 0): { subs: Subtitle[], duration: number } {
     const subs: Subtitle[] = [];
-    let time = 0;
+    let time = baseTime;
     
     // Explicit Database of Japanese and Standard Quote Boundaries
     const openBrackets = new Set(['「', '『', '（', '(', '【', '《', '〈', '〔', '“', '‘']);
@@ -316,7 +316,7 @@ const EPUBParser = {
         return stack.join("/");
     },
     async parse(file: File, splitByCommas: boolean = false) {
-        const meta = { title: file.name.replace(/\.epub$/i, ''), subs: [] as Subtitle[], coverUrl: '', coverBlob: null as Blob | null, duration: 0 };
+        const meta = { title: file.name.replace(/\.epub$/i, ''), subs: [] as Subtitle[], chapters: [] as any[], coverUrl: '', coverBlob: null as Blob | null, duration: 0 };
         const buffer = await file.arrayBuffer();
         const zip = fflate.unzipSync(new Uint8Array(buffer as ArrayBuffer));
         
@@ -388,7 +388,9 @@ const EPUBParser = {
 
         // Spine extraction
         const spineArr = Array.isArray(opfObj.package?.spine?.itemref) ? opfObj.package?.spine?.itemref : [opfObj.package?.spine?.itemref];
-        let allText = "";
+        let allSubs: Subtitle[] = [];
+        let chapters: any[] = [];
+        let currentTime = 0;
 
         for (let i = 0; i < spineArr.length; i++) {
             const idref = spineArr[i]?.['@_idref'];
@@ -400,6 +402,14 @@ const EPUBParser = {
                 const zipKey = Object.keys(zip).find(k => k.toLowerCase() === relPath.toLowerCase());
                 if (zipKey) {
                     const html = fflate.strFromU8(zip[zipKey]);
+                    
+                    let chapterTitle = idref;
+                    const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || html.match(/<h[1-3][^>]*>([\s\S]*?)<\/h[1-3]>/i);
+                    if (titleMatch && titleMatch[1]) {
+                        chapterTitle = titleMatch[1].replace(/<[^>]+>/g, "").trim();
+                    }
+                    chapters.push({ id: idref, title: chapterTitle, subtitleIndex: allSubs.length });
+
                     // Extremely aggressive HTML stripping regex since no DOMParser in web workers
                     const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
                     let bodyStr = bodyMatch ? bodyMatch[1] : html;
@@ -415,7 +425,11 @@ const EPUBParser = {
                                      .replace(/&nbsp;/g, ' ')
                                      .trim();
 
-                    if (bodyStr) allText += bodyStr + " ";
+                    if (bodyStr) {
+                         const { subs, duration } = segmentText(bodyStr, splitByCommas, currentTime);
+                         allSubs.push(...subs);
+                         currentTime = duration;
+                    }
                 }
             }
             if (i % 5 === 0) { // report progress incrementally
@@ -425,9 +439,9 @@ const EPUBParser = {
 
         ctx.postMessage({ type: 'PROGRESS', progress: 85 });
         
-        const { subs, duration } = segmentText(allText, splitByCommas);
-        meta.subs = subs;
-        meta.duration = duration;
+        meta.subs = allSubs;
+        meta.duration = currentTime;
+        meta.chapters = chapters;
         
         return meta;
     }
@@ -453,6 +467,7 @@ ctx.addEventListener('message', async (event: MessageEvent<ParseConfig>) => {
             originalSubtitles: meta.subs,
             splitByCommas: false,
             duration: meta.duration,
+            chapters: meta.chapters,
             type: 'epub'
         } as Book;
     } else if (config.type === 'audiobook') { // M4B or MP3

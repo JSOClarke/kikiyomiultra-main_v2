@@ -209,7 +209,7 @@ export const usePlayerStore = create<PlayerState>()(
   markSubtitleMined: (subtitleId) => set((state) => {
     if (!state.activeBook) return state;
 
-    const newSubtitles = state.activeBook.subtitles.map(sub => 
+    const newSubtitles = (state.activeBook.subtitles || []).map(sub => 
       sub.id === subtitleId ? { ...sub, isMined: true } : sub
     );
 
@@ -414,7 +414,7 @@ export const usePlayerStore = create<PlayerState>()(
     if (!activeBook || activeBook.type !== 'epub' || !activeBook.originalSubtitles) return;
     
     // Find ID of the currently active line so we can restore the reading position
-    const currentSubId = activeBook.subtitles[activeIndex]?.id;
+    const currentSubId = activeBook.subtitles?.[activeIndex]?.id;
     
     const newSplitSetting = !activeBook.splitByCommas;
     let newSubs: Subtitle[] = [];

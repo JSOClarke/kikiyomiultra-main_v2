@@ -29,6 +29,7 @@ export interface BaseBook {
   splitByCommas?: boolean;
   totalSubtitles?: number; // Injected by the API Manifest
   language?: string;
+  chapters?: { id?: string | number; title: string; subtitleIndex?: number; startTime?: number; }[];
 }
 
 export interface AudioBook extends BaseBook {
