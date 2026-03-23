@@ -129,11 +129,15 @@ export const usePlayerStore = create<PlayerState>()(
     const exists = state.library.some(b => b.id === finalBook.id);
     const newLib = exists ? state.library.map(b => b.id === finalBook.id ? finalBook : b) : [finalBook, ...state.library];
     
+    const isSameBook = state.activeBook?.id === finalBook.id;
+    const nextIndex = isSameBook ? state.activeIndex : (finalBook.savedIndex || 0);
+    const nextTime = isSameBook ? state.currentTime : (finalBook.savedTime || 0);
+
     return { 
       activeBook: finalBook, 
       library: newLib,
-      activeIndex: finalBook.savedIndex || 0, 
-      currentTime: finalBook.savedTime || 0, 
+      activeIndex: nextIndex, 
+      currentTime: nextTime, 
       isPlaying: false,
       duration: finalBook.type === 'audiobook' ? finalBook.duration : undefined 
     };

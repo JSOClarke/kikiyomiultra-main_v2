@@ -1,7 +1,7 @@
 import React from 'react';
 import { usePlayerStore } from '../../store/usePlayerStore';
 import { useStore } from '../../store/useStore';
-import { Settings, List, ChevronLeft, ChevronRight, BookOpen, Scissors, MessageSquare } from 'lucide-react';
+import { Settings, List, ChevronLeft, ChevronRight, BookOpen, Scissors, MessageSquare, AlignRight } from 'lucide-react';
 
 export const TextControls: React.FC = () => {
   const activeBook = usePlayerStore((state) => state.activeBook);
@@ -13,6 +13,8 @@ export const TextControls: React.FC = () => {
   const showAnnotations = useStore((state) => state.showAnnotations);
   const toggleAnnotations = useStore((state) => state.toggleAnnotations);
   const toggleChapters = useStore((state) => state.toggleChapters);
+  const isVerticalMode = useStore((state) => state.isVerticalMode);
+  const toggleVerticalMode = useStore((state) => state.toggleVerticalMode);
 
   // Fallback if no book or no subtitles
   if (!activeBook || !activeBook.subtitles || activeBook.subtitles.length === 0) return null;
@@ -126,6 +128,14 @@ export const TextControls: React.FC = () => {
             title="Toggle Annotations"
           >
             <MessageSquare size={18} /> {showAnnotations ? 'Notes' : ''}
+          </button>
+          
+          <button 
+            onClick={toggleVerticalMode}
+            className={`p-2 flex items-center gap-1.5 text-xs rounded-full transition-all ${isVerticalMode ? 'bg-primary/20 text-primary border border-primary/30 px-3 md:px-3' : 'text-text-muted hover:text-text hover:bg-white/10 px-2'}`}
+            title="Toggle Vertical Reading Mode"
+          >
+            <AlignRight size={18} className={isVerticalMode ? "rotate-90" : ""} /> {isVerticalMode ? <span className="hidden md:inline">Vertical</span> : ''}
           </button>
           
           <button 

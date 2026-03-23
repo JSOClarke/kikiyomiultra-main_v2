@@ -22,6 +22,8 @@ interface StoreState {
   setReaderFont: (font: string) => void;
   readerFontSize: number;
   setReaderFontSize: (size: number) => void;
+  isVerticalMode: boolean;
+  toggleVerticalMode: () => void;
 
   // Manga Settings
   mangaFitMode: 'fit-screen' | 'fit-width' | 'original';
@@ -108,6 +110,8 @@ export const useStore = create<StoreState>()(
       setReaderFont: (font) => set({ readerFont: font }),
       readerFontSize: 36,
       setReaderFontSize: (size) => set({ readerFontSize: size }),
+      isVerticalMode: false,
+      toggleVerticalMode: () => set((state) => ({ isVerticalMode: !state.isVerticalMode })),
 
       // Manga Settings
       mangaFitMode: 'fit-screen',
@@ -224,6 +228,7 @@ export const useStore = create<StoreState>()(
         theme: state.theme,
         readerFont: state.readerFont,
         readerFontSize: state.readerFontSize,
+        isVerticalMode: state.isVerticalMode,
         isSidebarCollapsed: state.isSidebarCollapsed,
         showAnnotations: state.showAnnotations,
         ankiField: state.ankiField,

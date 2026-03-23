@@ -84,11 +84,19 @@ export const PlayerPage: React.FC = () => {
           break;
         case 'ArrowRight':
           e.preventDefault();
-          usePlayerStore.getState().skipToNextSubtitle();
+          if (useStore.getState().isVerticalMode) {
+            usePlayerStore.getState().skipToPreviousSubtitle();
+          } else {
+            usePlayerStore.getState().skipToNextSubtitle();
+          }
           break;
         case 'ArrowLeft':
           e.preventDefault();
-          usePlayerStore.getState().skipToPreviousSubtitle();
+          if (useStore.getState().isVerticalMode) {
+            usePlayerStore.getState().skipToNextSubtitle();
+          } else {
+            usePlayerStore.getState().skipToPreviousSubtitle();
+          }
           break;
         case 'KeyF':
           e.preventDefault();

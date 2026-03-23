@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useStore } from '../../store/useStore';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { SubtitleRow } from './SubtitleRow';
 import { usePlayerStore } from '../../store/usePlayerStore';
@@ -10,6 +11,7 @@ export const SubtitleList: React.FC = () => {
   
   const subtitles = usePlayerStore((state) => state.activeBook?.subtitles || EMPTY_SUBTITLES);
   const activeIndex = usePlayerStore((state) => state.activeIndex);
+  const isVerticalMode = useStore((state) => state.isVerticalMode);
   
   const [activeSubId, setActiveSubId] = useState<string | null>(null);
   const [userHasScrolled, setUserHasScrolled] = useState(false);
@@ -19,10 +21,31 @@ export const SubtitleList: React.FC = () => {
   const virtualizer = useVirtualizer({
     count: subtitles.length,
     getScrollElement: () => scrollElementRef.current,
-    estimateSize: () => 100, // Very rough average height of a subtitle row in px
-    overscan: 5, // Pre-render 5 items above and below the viewport to prevent flash
-    paddingStart: typeof window !== 'undefined' ? window.innerHeight * 0.4 : 400,
-    paddingEnd: typeof window !== 'undefined' ? window.innerHeight * 0.4 : 400,
+    estimateSize: () => isVerticalMode ? 80 : 100, // Vertical mode items are narrower (~80px wide) compared to horizontal mode (~100px tall)
+    overscan: 5,
+    paddingStart: typeof window !== 'undefined' ? ((isVerticalMode ? window.innerWidth : window.innerHeight) * 0.4) : 400,
+    paddingEnd: typeof window !== 'undefined' ? ((isVerticalMode ? window.innerWidth : window.innerHeight) * 0.4) : 400,
+    horizontal: isVerticalMode,
+    isRtl: isVerticalMode,
+    measureElement: (element) => {
+      // Browser C++ layout engines natively fail to report bounding-box width accurately 
+      // when orthogonal writingMode (vertical-rl) splits into multiple columns. 
+      // We bypass this entirely by forcefully probing the unclipped scroll matrix.
+      if (isVerticalMode) {
+        return Math.max(element.getBoundingClientRect().width, element.scrollWidth);
+      }
+      return element.getBoundingClientRect().height;
+    },
+    scrollToFn: (offset, options) => {
+      const el = scrollElementRef.current;
+      if (!el) return;
+      if (isVerticalMode) {
+        // Modern browsers expect negative tracking for RTL matrices
+        el.scrollTo({ left: -offset, behavior: options.behavior });
+      } else {
+        el.scrollTo({ top: offset, behavior: options.behavior });
+      }
+    }
   });
 
   // Track if user is manually scrolling via wheel or touch (ignores programmatic scroll)
@@ -48,9 +71,9 @@ export const SubtitleList: React.FC = () => {
       wheelDebounce = true;
       setTimeout(() => wheelDebounce = false, 150); // 150ms legacy debounce logic
 
-      if (e.deltaY > 0) {
+      if (e.deltaY > 0 || e.deltaX < 0) { // Support horizontal trackpad scrolls
         usePlayerStore.getState().skipToNextSubtitle();
-      } else if (e.deltaY < 0) {
+      } else if (e.deltaY < 0 || e.deltaX > 0) {
         usePlayerStore.getState().skipToPreviousSubtitle();
       }
     };
@@ -69,7 +92,7 @@ export const SubtitleList: React.FC = () => {
       }
       
       // Auto-scroll to the active element, ONLY if the user isn't currently dragging the scrollbar
-      if (!userHasScrolled && virtualizer) {
+      if (!userHasScrolled && virtualizer && scrollElementRef.current) {
         // Wait till next tick to ensure Virtualizer is ready
         setTimeout(() => {
           virtualizer.scrollToIndex(activeIndex, {
@@ -79,18 +102,20 @@ export const SubtitleList: React.FC = () => {
         }, 50);
       }
     }
-  }, [activeIndex, subtitles, virtualizer, userHasScrolled]);
+  }, [activeIndex, subtitles, virtualizer, userHasScrolled, isVerticalMode]);
 
   return (
     <div 
       ref={scrollElementRef}
+      dir={isVerticalMode ? "rtl" : "ltr"}
       onTouchMove={handleUserScroll}
-      className="flex-1 overflow-y-auto relative w-full"
+      className={`flex-1 relative w-full h-full pb-32 ${isVerticalMode ? 'overflow-x-auto overflow-y-hidden' : 'overflow-y-auto overflow-x-hidden'}`}
     >
       <div
-        className="m-0 list-none bg-transparent w-full relative"
+        className="m-0 list-none bg-transparent relative"
         style={{
-          height: `${virtualizer.getTotalSize()}px`,
+          width: isVerticalMode ? `${virtualizer.getTotalSize()}px` : '100%',
+          height: isVerticalMode ? '100%' : `${virtualizer.getTotalSize()}px`,
         }}
       >
         {/* We use absolutely positioned dynamic containers instead of a standard map */}
@@ -103,9 +128,11 @@ export const SubtitleList: React.FC = () => {
               key={virtualRow.key}
               data-index={virtualRow.index}
               ref={virtualizer.measureElement}
-              className="absolute top-0 left-0 w-full"
+              className={`absolute top-0 ${isVerticalMode ? 'right-0' : 'left-0'}`}
               style={{
-                transform: `translateY(${virtualRow.start}px)`,
+                width: isVerticalMode ? 'auto' : '100%',
+                height: '100%',
+                transform: isVerticalMode ? `translateX(${-virtualRow.start}px)` : `translateY(${virtualRow.start}px)`,
               }}
             >
               <SubtitleRow 

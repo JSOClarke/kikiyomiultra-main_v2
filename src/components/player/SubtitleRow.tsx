@@ -17,7 +17,10 @@ export const SubtitleRow: React.FC<SubtitleRowProps> = ({ sub, isActive, index }
   const seekTo = usePlayerStore((state) => state.seekTo);
   const activeBook = usePlayerStore((state) => state.activeBook);
   const setActiveIndex = usePlayerStore((state) => state.setActiveIndex);
+  const isVerticalMode = useStore((state) => state.isVerticalMode);
   
+  const textContainerRef = React.useRef<HTMLDivElement>(null);
+
   // Translation Hook
   const { translation, isLoading, fetchTranslation } = useTranslate();
   const [showTranslation, setShowTranslation] = useState(false);
@@ -26,6 +29,23 @@ export const SubtitleRow: React.FC<SubtitleRowProps> = ({ sub, isActive, index }
   const { enhanceCard, isEnhancing } = useAnki();
   const [ankiStatus, setAnkiStatus] = useState<'idle' | 'success' | 'error'>('idle');
   
+  // Hard-sync the wrapper's physical bounding box to its internal orthogonal scroll wrapper.
+  // Because C++ layout engines fail to expand bounding boxes natively when vertical-rl text 
+  // wraps across extra columns, we physically probe it and patch the style width before paint.
+  // This guarantees TanStack Virtual perfectly separates the rows without overlapping them.
+  React.useLayoutEffect(() => {
+    if (isVerticalMode && textContainerRef.current) {
+      // Disconnect artificial sizing temporarily to probe natural orthogonal block size
+      textContainerRef.current.style.minWidth = 'auto';
+      const actualWidth = textContainerRef.current.scrollWidth;
+      if (actualWidth > 0) {
+        textContainerRef.current.style.minWidth = `${actualWidth}px`;
+      }
+    } else if (textContainerRef.current) {
+      textContainerRef.current.style.minWidth = 'auto';
+    }
+  }, [sub.text, isVerticalMode]);
+
   // Local Action States
   const bookmarks = useStore((state) => state.bookmarks);
   const addBookmark = useStore((state) => state.addBookmark);
@@ -147,7 +167,11 @@ export const SubtitleRow: React.FC<SubtitleRowProps> = ({ sub, isActive, index }
     <li
       data-sub-id={sub.id}
       onClick={handleClick}
-      className={`relative grid grid-cols-[44px_44px_1fr_80px] md:grid-cols-[50px_50px_1fr_100px] gap-1 md:gap-3 items-center min-h-[3em] py-4 px-2 md:px-4 my-2 w-full cursor-pointer text-[1.4rem] md:text-[1.8rem] font-reader leading-relaxed transition-colors duration-500 ease-out group rounded-2xl
+      className={`relative grid gap-1 md:gap-3 items-center py-4 px-2 md:px-4 cursor-pointer text-[1.4rem] md:text-[1.8rem] font-reader leading-relaxed transition-colors duration-500 ease-out group rounded-2xl
+        ${isVerticalMode 
+           ? 'grid-rows-[44px_44px_1fr_80px] md:grid-rows-[50px_50px_1fr_100px] justify-items-center h-full min-w-[3em] mx-1 md:mx-4 my-0' 
+           : 'grid-cols-[44px_44px_1fr_80px] md:grid-cols-[50px_50px_1fr_100px] w-full min-h-[3em] my-2'
+        }
         ${isActive 
           ? 'text-text font-medium z-10' 
           : 'text-text-muted hover:text-text'
@@ -175,8 +199,13 @@ export const SubtitleRow: React.FC<SubtitleRowProps> = ({ sub, isActive, index }
         </button>
       </div>
 
-      <div className="text-center z-10 flex flex-col gap-2 w-full">
-        <div className={`transition-colors font-medium text-[length:var(--font-size-base)] leading-normal tracking-normal ${isTokenNavMode ? 'select-none cursor-pointer' : 'select-text cursor-text'}`}>
+      <div className={`z-10 flex ${isVerticalMode ? 'text-left flex-row items-start justify-start h-full max-h-full min-h-0' : 'text-center flex-col items-center w-full'} gap-2 px-2`}>
+        <div 
+          ref={textContainerRef}
+          dir="ltr"
+          className={`transition-colors font-medium whitespace-pre-wrap text-[length:var(--font-size-base)] leading-normal tracking-normal h-full max-h-full min-h-0 ${isTokenNavMode ? 'select-none cursor-pointer' : 'select-text cursor-text'}`}
+          style={isVerticalMode ? { writingMode: 'vertical-rl', WebkitWritingMode: 'vertical-rl', textAlign: 'left' } : { textAlign: 'center' }}
+        >
           {isActive && isTokenNavMode ? (
             navTokens.map((token) => (
               <span
@@ -202,7 +231,11 @@ export const SubtitleRow: React.FC<SubtitleRowProps> = ({ sub, isActive, index }
         </div>
         
         {/* On-Demand Translation Container */}
-        <div className={`overflow-hidden transition-all duration-500 ${showTranslation ? 'max-h-[150px] opacity-100 mt-2' : 'max-h-0 opacity-0'}`}>
+        <div className={`overflow-hidden transition-all duration-500 ${
+          showTranslation 
+            ? isVerticalMode ? 'max-w-[250px] opacity-100 pl-4' : 'max-h-[150px] opacity-100 mt-2' 
+            : isVerticalMode ? 'max-w-0 opacity-0 px-0' : 'max-h-0 opacity-0'
+        }`}>
           {isLoading ? (
             <div className="flex justify-center items-center py-2">
               <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -215,7 +248,7 @@ export const SubtitleRow: React.FC<SubtitleRowProps> = ({ sub, isActive, index }
         </div>
         
         {/* Annotation Textarea Container */}
-        <div className={`overflow-hidden transition-all duration-300 w-full ${isAnnotating || (annotationValue && showAnnotations) ? 'mt-3 opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className={`overflow-hidden transition-all duration-300 w-full ${isAnnotating || (annotationValue && showAnnotations) ? 'mt-3 opacity-100' : 'max-h-0 opacity-0'} ${isVerticalMode ? 'hidden' : ''}`}>
           {isAnnotating ? (
              <textarea 
                autoFocus
@@ -242,7 +275,7 @@ export const SubtitleRow: React.FC<SubtitleRowProps> = ({ sub, isActive, index }
         </div>
       </div>
 
-      <div className="flex justify-center z-10 gap-2">
+      <div className={`flex justify-center z-10 gap-2 ${isVerticalMode ? 'flex-col' : 'flex-row'}`}>
         {/* Anki Button */}
         <button 
           className={`bg-transparent border-none cursor-pointer transition-all p-2 rounded-full hover:bg-white/10

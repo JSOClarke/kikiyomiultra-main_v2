@@ -23,7 +23,7 @@ export const Tracker: React.FC = () => {
   const addCharacters = useStatsStore(state => state.addCharacters);
 
   const location = useLocation();
-  const isPlayerPage = location.pathname === '/player';
+  const isPlayerPage = location.pathname.startsWith('/player');
 
   // --- TIME TRACKER ---
   useEffect(() => {
