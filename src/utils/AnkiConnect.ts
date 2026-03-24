@@ -31,7 +31,7 @@ class AnkiConnectAPI {
    * Retrieves the ID of the note that was most recently added to the user's collection.
    */
   async getLastCreatedCardId(): Promise<number | null> {
-    const cards = await this.invoke('findCards', { query: 'added:1' });
+    const cards = await this.invoke('findCards', { query: 'added:2' });
     if (!cards || cards.length === 0) return null;
     return Math.max(...cards);
   }

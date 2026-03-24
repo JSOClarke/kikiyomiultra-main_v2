@@ -100,42 +100,26 @@ export const TextControls: React.FC = () => {
         <div className="flex items-center gap-2 md:gap-4">
           <button 
             onClick={toggleCommaSplit}
-            className={`p-2 flex items-center gap-1.5 md:hidden text-xs rounded-full transition-all ${activeBook.splitByCommas ? 'bg-primary/20 text-primary border border-primary/30' : 'text-text-muted hover:text-text hover:bg-white/10'}`}
+            className={`p-2 rounded-full transition-all ${activeBook.splitByCommas ? 'text-primary bg-primary/10 scale-105' : 'text-text-muted hover:text-text hover:bg-white/10'}`}
             title="Toggle Sentence Splitting"
           >
-            <Scissors size={18} />
-          </button>
-          
-          <button 
-            onClick={toggleCommaSplit}
-            className={`hidden md:flex p-2 items-center gap-1.5 text-xs rounded-full transition-all ${activeBook.splitByCommas ? 'bg-primary/20 text-primary border border-primary/30 px-3' : 'text-text-muted hover:text-text hover:bg-white/10 px-2'}`}
-            title="Toggle Sentence Splitting"
-          >
-            <Scissors size={18} /> {activeBook.splitByCommas ? 'Split' : ''}
+            <Scissors size={20} />
           </button>
           
           <button 
             onClick={toggleAnnotations}
-            className={`p-2 flex items-center gap-1.5 md:hidden text-xs rounded-full transition-all ${showAnnotations ? 'bg-primary/20 text-primary border border-primary/30' : 'text-text-muted hover:text-text hover:bg-white/10'}`}
-            title="Toggle Annotations"
+            className={`p-2 rounded-full transition-all ${showAnnotations ? 'text-primary bg-primary/10 scale-105' : 'text-text-muted hover:text-text hover:bg-white/10'}`}
+            title="Toggle Annotations Mode"
           >
-            <MessageSquare size={18} />
-          </button>
-          
-          <button 
-            onClick={toggleAnnotations}
-            className={`hidden md:flex p-2 items-center gap-1.5 text-xs rounded-full transition-all ${showAnnotations ? 'bg-primary/20 text-primary border border-primary/30 px-3' : 'text-text-muted hover:text-text hover:bg-white/10 px-2'}`}
-            title="Toggle Annotations"
-          >
-            <MessageSquare size={18} /> {showAnnotations ? 'Notes' : ''}
+            <MessageSquare size={20} />
           </button>
           
           <button 
             onClick={toggleVerticalMode}
-            className={`p-2 flex items-center gap-1.5 text-xs rounded-full transition-all ${isVerticalMode ? 'bg-primary/20 text-primary border border-primary/30 px-3 md:px-3' : 'text-text-muted hover:text-text hover:bg-white/10 px-2'}`}
+            className={`p-2 rounded-full transition-all ${isVerticalMode ? 'text-primary bg-primary/10 scale-105' : 'text-text-muted hover:text-text hover:bg-white/10'}`}
             title="Toggle Vertical Reading Mode"
           >
-            <AlignRight size={18} className={isVerticalMode ? "rotate-90" : ""} /> {isVerticalMode ? <span className="hidden md:inline">Vertical</span> : ''}
+            <AlignRight size={20} className={`transition-transform duration-300 ${isVerticalMode ? 'rotate-90' : ''}`} />
           </button>
           
           <button 

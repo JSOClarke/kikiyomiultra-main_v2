@@ -143,7 +143,7 @@ export const FocusMode: React.FC = () => {
               removeBookmark(activeBookmark.id);
             } else {
               addBookmark({
-                id: crypto.randomUUID(),
+                id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36),
                 bookId: activeBookId,
                 subtitleId: activeSub.id,
                 text: activeSub.text,

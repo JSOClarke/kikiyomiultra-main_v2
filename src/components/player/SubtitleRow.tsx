@@ -124,12 +124,28 @@ export const SubtitleRow: React.FC<SubtitleRowProps> = ({ sub, isActive, index }
     fetchTranslation(sub.text);
   };
 
-  const handleCopyClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleCopyClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(sub.text).then(() => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(sub.text);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = sub.text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        textArea.style.top = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+      }
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
-    });
+    } catch (err) {
+      console.warn("Clipboard access denied natively.", err);
+    }
   };
 
   const handleAnkiMining = async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -154,7 +170,7 @@ export const SubtitleRow: React.FC<SubtitleRowProps> = ({ sub, isActive, index }
       removeBookmark(activeBookmark.id);
     } else {
       addBookmark({
-        id: crypto.randomUUID(),
+        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36),
         bookId: activeBook.id,
         subtitleId: sub.id,
         text: sub.text,
@@ -167,39 +183,59 @@ export const SubtitleRow: React.FC<SubtitleRowProps> = ({ sub, isActive, index }
     <li
       data-sub-id={sub.id}
       onClick={handleClick}
-      className={`relative grid gap-1 md:gap-3 items-center py-4 px-2 md:px-4 cursor-pointer text-[1.4rem] md:text-[1.8rem] font-reader leading-relaxed transition-colors duration-500 ease-out group rounded-2xl
+      className={`relative flex items-center justify-center py-4 px-2 md:px-4 cursor-pointer text-[1.4rem] md:text-[1.8rem] font-reader leading-relaxed transition-colors duration-500 ease-out group rounded-2xl
         ${isVerticalMode 
-           ? 'grid-rows-[44px_44px_1fr_80px] md:grid-rows-[50px_50px_1fr_100px] justify-items-center h-full min-w-[3em] mx-1 md:mx-4 my-0' 
-           : 'grid-cols-[44px_44px_1fr_80px] md:grid-cols-[50px_50px_1fr_100px] w-full min-h-[3em] my-2'
+           ? 'flex-col h-full min-w-[3em] mx-1 md:mx-4 my-0 pt-[40px]' 
+           : 'w-full min-h-[3em] my-2 pt-[30px]'
         }
         ${isActive 
-          ? 'text-text font-medium z-10' 
-          : 'text-text-muted hover:text-text'
+          ? 'bg-white/5 text-text font-medium z-10 shadow-sm' 
+          : 'text-text-muted hover:text-text hover:bg-white/5'
         }
       `}
     >
 
-      {/* Action Buttons */}
-      <div className="flex justify-center z-10">
+      {/* Unified Action Floating Bar */}
+      <div 
+        className={`absolute z-20 flex flex-row items-center gap-1.5 w-max px-3 py-1.5 bg-surface-hover/90 backdrop-blur-md rounded-full shadow-md transition-all duration-300
+          ${isVerticalMode ? 'top-0 left-1/2 -translate-x-1/2' : 'top-2 right-4'}
+          ${isActive ? 'opacity-100 scale-100 pointer-events-auto md:opacity-0 md:scale-95 md:pointer-events-none md:group-hover:opacity-100 md:group-hover:scale-100 md:group-hover:pointer-events-auto' : 'opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 pointer-events-none group-hover:pointer-events-auto'}
+        `}
+      >
         <button 
-          className={`bg-transparent border-none cursor-pointer transition-all p-2 rounded-full hover:bg-white/10 ${isBookmarked ? 'text-warn opacity-100 scale-110' : 'text-text-muted opacity-50 group-hover:opacity-100 hover:text-warn hover:scale-110'}`} 
-          onClick={handleBookmarkClick}
-          title="Bookmark this line"
+          className={`bg-transparent border-none cursor-pointer transition-all p-1.5 rounded-full hover:bg-white/20 ${isBookmarked ? 'text-warn scale-110' : 'text-text-muted opacity-70 hover:text-warn hover:opacity-100 hover:scale-110'}`} 
+          onClick={handleBookmarkClick} title="Bookmark this line"
         >
-          <Star size={20} fill={isBookmarked ? "currentColor" : "none"} />
+          <Star size={16} fill={isBookmarked ? "currentColor" : "none"} />
         </button>
-      </div>
-      <div className="flex justify-center z-10">
         <button 
-          className={`bg-white/5 border border-border text-xs p-1.5 rounded-lg cursor-pointer transition-all invisible opacity-0 group-hover:visible group-hover:opacity-100 hover:bg-surface-hover ${isCopied ? 'text-sec border-sec' : 'text-text-muted hover:text-text hover:border-text-muted'}`} 
-          onClick={handleCopyClick}
-          title="Copy Japanese Text"
+          className={`bg-transparent border-none cursor-pointer transition-all p-1.5 rounded-full hover:bg-white/20 ${isCopied ? 'text-sec scale-110' : 'text-text-muted opacity-70 hover:text-sec hover:opacity-100 hover:scale-110'}`} 
+          onClick={handleCopyClick} title="Copy Japanese Text"
         >
           {isCopied ? <Check size={16} /> : <Copy size={16} />}
         </button>
+        <div className="w-px h-4 bg-white/10 mx-1"></div>
+        <button 
+          className={`bg-transparent border-none cursor-pointer transition-all p-1.5 rounded-full hover:bg-white/20 ${isEnhancing[sub.id] ? 'animate-pulse text-yellow-400 scale-110' : ankiStatus === 'success' ? 'text-green-500 scale-110' : ankiStatus === 'error' ? 'text-red-500 scale-110' : sub.isMined ? 'text-green-500 hover:scale-110' : 'text-text-muted opacity-70 hover:text-sec hover:opacity-100 hover:scale-110'}`} 
+          onClick={handleAnkiMining} title={sub.isMined ? "Sent to Anki" : "Send to Anki"} disabled={isEnhancing[sub.id]}
+        >
+           {ankiStatus === 'success' || sub.isMined ? <Check size={16} /> : <LibraryBig size={16} />}
+        </button>
+        <button 
+          className={`bg-transparent border-none cursor-pointer transition-all p-1.5 rounded-full hover:bg-white/20 ${showTranslation ? 'text-primary scale-110' : 'text-text-muted opacity-70 hover:text-primary hover:opacity-100 hover:scale-110'} ${isLoading ? 'animate-pulse' : ''}`} 
+          onClick={handleTranslateClick} title="Translate Line"
+        >
+          <Languages size={16} />
+        </button>
+        <button 
+          className={`bg-transparent border-none cursor-pointer transition-all p-1.5 rounded-full hover:bg-white/20 ${isAnnotating || annotationValue ? 'text-blue-400 scale-110' : 'text-text-muted opacity-70 hover:text-blue-400 hover:opacity-100 hover:scale-110'}`} 
+          onClick={handleAnnotationToggle} title={annotationValue ? "Edit Annotation" : "Add Annotation"}
+        >
+           <MessageSquare size={16} fill={annotationValue ? "currentColor" : "none"} />
+        </button>
       </div>
 
-      <div className={`z-10 flex ${isVerticalMode ? 'text-left flex-row items-start justify-start h-full max-h-full min-h-0' : 'text-center flex-col items-center w-full'} gap-2 px-2`}>
+      <div className={`flex-1 z-10 flex ${isVerticalMode ? 'text-left flex-row items-start justify-start h-full max-h-full min-h-0' : 'text-center flex-col items-center w-full'} gap-2 px-2`}>
         <div 
           ref={textContainerRef}
           dir="ltr"
@@ -275,38 +311,6 @@ export const SubtitleRow: React.FC<SubtitleRowProps> = ({ sub, isActive, index }
         </div>
       </div>
 
-      <div className={`flex justify-center z-10 gap-2 ${isVerticalMode ? 'flex-col' : 'flex-row'}`}>
-        {/* Anki Button */}
-        <button 
-          className={`bg-transparent border-none cursor-pointer transition-all p-2 rounded-full hover:bg-white/10
-            ${isEnhancing[sub.id] ? 'animate-pulse text-yellow-400 scale-110' : 
-              ankiStatus === 'success' ? 'text-green-500 scale-110' :
-              ankiStatus === 'error' ? 'text-red-500 scale-110' :
-              sub.isMined ? 'text-green-500 hover:scale-110 opacity-100 group-hover:opacity-100' :
-              'text-text-muted opacity-50 group-hover:opacity-100 hover:text-sec hover:scale-110'}`} 
-          onClick={handleAnkiMining}
-          title={sub.isMined ? "Sent to Anki" : "Send to Anki"}
-          disabled={isEnhancing[sub.id]}
-        >
-           {ankiStatus === 'success' || sub.isMined ? <Check size={18} /> : <LibraryBig size={18} />}
-        </button>
-        {/* Translate Button */}
-        <button 
-          className={`bg-transparent border-none cursor-pointer transition-all p-2 rounded-full hover:bg-white/10 ${showTranslation ? 'text-primary opacity-100 scale-110' : 'text-text-muted opacity-50 group-hover:opacity-100 hover:text-primary hover:scale-110'}`} 
-          onClick={handleTranslateClick}
-          title="Translate this line"
-        >
-           <Languages size={20} />
-        </button>
-        {/* Annotation Button */}
-        <button 
-          className={`bg-transparent border-none cursor-pointer transition-all p-2 rounded-full hover:bg-white/10 ${isAnnotating || annotationValue ? 'text-blue-400 opacity-100 scale-110' : 'text-text-muted opacity-50 group-hover:opacity-100 hover:text-blue-400 hover:scale-110'}`} 
-          onClick={handleAnnotationToggle}
-          title={annotationValue ? "Edit Annotation" : "Add Annotation"}
-        >
-           <MessageSquare size={18} fill={annotationValue ? "currentColor" : "none"} />
-        </button>
-      </div>
     </li>
   );
 }

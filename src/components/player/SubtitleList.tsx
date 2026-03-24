@@ -131,7 +131,7 @@ export const SubtitleList: React.FC = () => {
               className={`absolute top-0 ${isVerticalMode ? 'right-0' : 'left-0'}`}
               style={{
                 width: isVerticalMode ? 'auto' : '100%',
-                height: '100%',
+                height: isVerticalMode ? '100%' : 'auto',
                 transform: isVerticalMode ? `translateX(${-virtualRow.start}px)` : `translateY(${virtualRow.start}px)`,
               }}
             >

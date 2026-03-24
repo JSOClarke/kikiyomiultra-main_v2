@@ -146,7 +146,7 @@ export const useStore = create<StoreState>()(
       addMiningHistory: (entry) => set((state) => {
         const newEntry: MiningHistoryEntry = {
           ...entry,
-          id: crypto.randomUUID(),
+          id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36),
           timestamp: Date.now(),
         };
         // Keep last 200 entries (matching legacy behavior)
